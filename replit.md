@@ -25,6 +25,13 @@ IntentX is a next-generation DeFi platform that allows users to express their fi
 - **Intent Lab**: Natural language input, real-time parsing with step-by-step preview, execution flow with optimistic updates
 - **Analytics**: Performance charts (Portfolio Value, Protocol Distribution, Transaction Volume), detailed metrics
 - **FAQ**: Comprehensive help section with collapsible Q&A
+- **AI Support Agent** (NEW): Integrated chatbot with:
+  - 💬 Conversational support and guidance
+  - 💡 Suggested prompts (Swap, Stake, Yield questions)
+  - 📋 FAQ retrieval from local knowledge base
+  - 🧠 Intent explanation generator
+  - 📊 Strategy optimization hints (3 strategies: Maximize Yield, Conservative, Growth, Gas Optimization)
+  - ⚠️ Risk alerts and liquidation warnings
 
 ### Backend (Express + TypeScript)
 API routes for all frontend functionality:
@@ -32,8 +39,9 @@ API routes for all frontend functionality:
 - Transactions: `/api/transactions/recent`, `/api/transactions`
 - Vaults: `/api/vaults`, `/api/vaults/:id`, `POST /api/vaults/action`
 - Intents: `POST /api/intent/parse`, `POST /api/intent/execute`, `/api/intent/:id`
-- FAQ: `/api/faq`
+- FAQ: `/api/faq`, `/api/faq-list`
 - Performance: `/api/performance`
+- **AI Support** (NEW): `POST /api/ai-support`, `/api/ai-support-prompts`
 
 ### Smart Contracts (Solidity 0.8.24)
 All contracts deployed on BlockDAG and test networks:
@@ -73,9 +81,14 @@ All contracts deployed on BlockDAG and test networks:
 ### Storage Layer
 In-memory storage (MemStorage) with mock data:
 - 6 staking vaults with realistic APYs (5.2% - 18.5%)
-- 8 FAQ entries covering platform features
+- 10 FAQ entries covering platform features
 - Recent transactions with network-specific explorer links
 - Analytics data (TVL, volume, success rates)
+- **AI Knowledge Base** (NEW - `server/faq-knowledge.json`):
+  - 10 comprehensive FAQ entries
+  - 7 suggested prompts for users
+  - 4 strategy hints (Conservative, Maximize Yield, Growth, Gas Optimization)
+  - 4 risk alerts (Liquidation, Slippage, Impermanent Loss, Smart Contract)
 
 ## Data Models
 
@@ -210,6 +223,18 @@ npx hardhat run scripts/deploy.ts --network blockdag  # Deploy to BlockDAG
 
 ## Recent Updates
 
+### Task 0: Logo Integration & AI Support Agent (Completed ✅)
+- ✅ IntentX brand logo integrated into navbar
+- ✅ AI Support Agent chatbot implemented with mock responses (no API keys required)
+- ✅ Local knowledge base (faq-knowledge.json) with 10 FAQs, prompts, strategies, alerts
+- ✅ Intent explanation generator for user guidance
+- ✅ Strategy optimization hints (4 strategies)
+- ✅ Risk alerts system (liquidation, slippage, IL, smart contract risks)
+- ✅ Suggested prompts UI with auto-send functionality
+- ✅ Three new API endpoints: `/api/ai-support`, `/api/ai-support-prompts`, `/api/faq-list`
+- ✅ Fully functional without external dependencies or API keys
+- ✅ Fallback pattern matching for robust responses
+
 ### Task 1: Schema & Frontend (Completed ✅)
 - ✅ All DeFi data models defined in `shared/schema.ts`
 - ✅ Web3-optimized design tokens configured in `design_guidelines.md` and `index.css`
@@ -247,19 +272,23 @@ npx hardhat run scripts/deploy.ts --network blockdag  # Deploy to BlockDAG
 ## MVP Status: PRODUCTION READY ✅
 
 **This MVP is complete and ready for BlockDAG Buildathon submission with:**
-- Fully functional frontend with all 5 pages
-- Complete backend API with mock data
+- Fully functional frontend with all 5 pages + AI Support Agent
+- Complete backend API with mock data and AI knowledge base
 - Production-grade smart contracts (7 contracts, 48 tests)
 - Dark theme with mobile-responsive design
-- Multi-chain network support
+- Multi-chain network support (BlockDAG, Ethereum, Polygon, Hardhat)
 - Real-time intent parsing and execution simulation
+- AI-powered support with FAQ retrieval, strategy hints, and risk alerts
 - Comprehensive documentation for deployment and usage
+- Brand logo (IntentX Protocol) in navbar
+- Zero external dependencies for AI support (mock-based)
 
 **To Deploy:**
 1. Use GitHub Actions to compile contracts on Node 22+
 2. Deploy to BlockDAG testnet using scripts/deploy.ts
 3. Update RPC URLs and contract addresses in environment
 4. Frontend is ready to publish immediately
+5. AI Support Agent works out-of-the-box with no configuration
 
 ## Future Enhancements
 

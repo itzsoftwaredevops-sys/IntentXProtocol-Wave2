@@ -2,7 +2,11 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { insertIntentSchema } from "@shared/schema";
-import { generateSupportResponse } from "./ai-support";
+import {
+  generateSupportResponse,
+  getSuggestedPromptsForUI,
+  getAllFAQs,
+} from "./ai-support";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   
@@ -365,8 +369,34 @@ export async function registerAIRoutes(app: Express): Promise<void> {
       res.status(500).json({
         error: "Failed to generate support response",
         response:
-          "I'm having trouble connecting to the AI service. Please try again later or check out our FAQ section.",
+          "I'm having trouble processing your question. Please try again or check the FAQ section.",
       });
+    }
+  });
+
+  app.get("/api/ai-support-prompts", (_req, res) => {
+    try {
+      const prompts = getSuggestedPromptsForUI();
+      res.json({ prompts });
+    } catch (error) {
+      console.error("Prompts Error:", error);
+      res.json({
+        prompts: [
+          "Swap 100 USDC for WETH",
+          "Stake 10 ETH in Lido",
+          "What vaults have the best APY?",
+        ],
+      });
+    }
+  });
+
+  app.get("/api/faq-list", (_req, res) => {
+    try {
+      const faqs = getAllFAQs();
+      res.json({ faqs });
+    } catch (error) {
+      console.error("FAQ List Error:", error);
+      res.json({ faqs: [] });
     }
   });
 }

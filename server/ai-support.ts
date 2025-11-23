@@ -1,93 +1,243 @@
+import fs from "fs";
+import path from "path";
+
 interface ConversationMessage {
   role: "user" | "assistant";
   content: string;
 }
 
-// Knowledge base for support agent
-const intentXKnowledge = {
-  features: [
-    "Natural language intent parsing",
-    "Multi-chain DeFi execution",
-    "DEX trading, Lending/Borrowing, Staking",
-    "Sub-2 second perceived execution",
-    "Dark theme UI with optimistic updates",
-  ],
-  pages: {
-    Dashboard:
-      "View your portfolio overview with stats cards showing Total Volume, Active Intents, Total Gas Saved, and Average Execution Time. See recent transactions with explorer links.",
-    Vaults: "Access 6 staking/lending vaults (ETH Staking, USDC Lending, WETH Staking, DAI Lending, stETH Staking, USDT Lending) with competitive APYs ranging from 5.2% to 18.5%.",
-    "Intent Lab":
-      "Describe your financial goal in natural language. The system parses it, shows step-by-step preview with gas estimates, and executes with optimistic UI updates.",
-    Analytics:
-      "View detailed performance metrics including portfolio value trends, protocol distribution charts, transaction volume history, and success rates.",
-    FAQ: "Browse frequently asked questions about IntentX features, DeFi concepts, wallet connection, and troubleshooting.",
-  },
-  networks: [
-    "BlockDAG Testnet (primary)",
-    "Ethereum Goerli",
-    "Polygon Mumbai",
-    "Hardhat Local",
-  ],
-};
+interface FAQ {
+  faqs: Array<{
+    id: string;
+    question: string;
+    answer: string;
+  }>;
+  suggestedPrompts: string[];
+  strategyHints: Array<{
+    title: string;
+    description: string;
+    riskLevel: string;
+  }>;
+  riskAlerts: Array<{
+    type: string;
+    message: string;
+    severity: string;
+  }>;
+  intentExamples: Record<
+    string,
+    {
+      example: string;
+      explanation: string;
+    }
+  >;
+}
 
-// Simple pattern matching for common questions
-function generateFallbackResponse(userMessage: string): string {
+let knowledgeBase: FAQ | null = null;
+
+function loadKnowledgeBase(): FAQ {
+  if (knowledgeBase) return knowledgeBase;
+
+  try {
+    const faqPath = path.join(process.cwd(), "server", "faq-knowledge.json");
+    const data = fs.readFileSync(faqPath, "utf-8");
+    knowledgeBase = JSON.parse(data);
+    return knowledgeBase;
+  } catch (error) {
+    console.warn("Could not load knowledge base, using defaults");
+    return {
+      faqs: [],
+      suggestedPrompts: [
+        "Swap 100 USDC for WETH",
+        "Stake 10 ETH",
+        "What vaults have the best APY?",
+      ],
+      strategyHints: [],
+      riskAlerts: [],
+      intentExamples: {},
+    };
+  }
+}
+
+function searchFAQ(query: string): string | null {
+  const kb = loadKnowledgeBase();
+  const lowerQuery = query.toLowerCase();
+
+  // Direct FAQ match
+  const faq = kb.faqs.find((f) =>
+    f.question.toLowerCase().includes(lowerQuery)
+  );
+  if (faq) return faq.answer;
+
+  // Keyword matching
+  const keywords = [
+    "vault",
+    "apy",
+    "stake",
+    "borrow",
+    "swap",
+    "network",
+    "wallet",
+    "gas",
+    "security",
+  ];
+  const matchingKeyword = keywords.find((k) => lowerQuery.includes(k));
+  if (matchingKeyword) {
+    const relevant = kb.faqs.find((f) =>
+      f.question.toLowerCase().includes(matchingKeyword)
+    );
+    if (relevant) return relevant.answer;
+  }
+
+  return null;
+}
+
+function generateIntentExplanation(intent: string): string {
+  const kb = loadKnowledgeBase();
+  const lowerIntent = intent.toLowerCase();
+
+  if (lowerIntent.includes("swap")) {
+    const example = kb.intentExamples.swap;
+    return example
+      ? `💱 **Swap Intent Analysis**\n\n${example.explanation}`
+      : "Swap detected. This will exchange one token for another at the best available rate.";
+  }
+
+  if (lowerIntent.includes("stake")) {
+    const example = kb.intentExamples.stake;
+    return example
+      ? `🔒 **Staking Intent Analysis**\n\n${example.explanation}`
+      : "Staking detected. Your tokens will be locked to earn rewards.";
+  }
+
+  if (lowerIntent.includes("borrow") || lowerIntent.includes("supply")) {
+    const example = kb.intentExamples.borrow;
+    return example
+      ? `💰 **Lending Intent Analysis**\n\n${example.explanation}`
+      : "Lending detected. You'll supply collateral and potentially borrow against it.";
+  }
+
+  if (lowerIntent.includes("optimize") || lowerIntent.includes("strategy")) {
+    const example = kb.intentExamples.yield;
+    return example
+      ? `📊 **Portfolio Optimization**\n\n${example.explanation}`
+      : "Portfolio optimization will analyze your holdings and suggest yield improvements.";
+  }
+
+  return `📝 **Intent Preview**\n\nYour request appears to be a ${
+    lowerIntent.includes("swap")
+      ? "swap"
+      : lowerIntent.includes("stake")
+        ? "staking"
+        : "DeFi"
+  } operation. Review the step-by-step preview below for details.`;
+}
+
+function getStrategyHints(): string {
+  const kb = loadKnowledgeBase();
+  if (!kb.strategyHints || kb.strategyHints.length === 0) {
+    return "Strategy hints unavailable. Check FAQ for detailed guides.";
+  }
+
+  const hints = kb.strategyHints
+    .map(
+      (h) =>
+        `**${h.title}** (${h.riskLevel.toUpperCase()} risk)\n${h.description}`
+    )
+    .join("\n\n");
+
+  return `**Available Strategies:**\n\n${hints}`;
+}
+
+function getRiskAlerts(): string {
+  const kb = loadKnowledgeBase();
+  if (!kb.riskAlerts || kb.riskAlerts.length === 0) {
+    return "No active risk alerts.";
+  }
+
+  const alerts = kb.riskAlerts
+    .map((a) => `⚠️ **${a.type.toUpperCase()}**: ${a.message}`)
+    .join("\n");
+
+  return `**Risk Alerts:**\n\n${alerts}`;
+}
+
+function getSuggestedPrompts(): string[] {
+  const kb = loadKnowledgeBase();
+  return kb.suggestedPrompts || [
+    "Swap 100 USDC for WETH",
+    "Stake 10 ETH",
+    "What vaults have the best APY?",
+  ];
+}
+
+function generateMockResponse(userMessage: string): string {
   const lowerMessage = userMessage.toLowerCase();
 
+  // FAQ retrieval
+  const faqAnswer = searchFAQ(userMessage);
+  if (faqAnswer) {
+    return `**FAQ Answer:**\n\n${faqAnswer}`;
+  }
+
+  // Strategy recommendations
+  if (lowerMessage.includes("strategy") || lowerMessage.includes("optimize")) {
+    return getStrategyHints();
+  }
+
+  // Risk analysis
   if (
-    lowerMessage.includes("hello") ||
-    lowerMessage.includes("hi") ||
-    lowerMessage.includes("help")
+    lowerMessage.includes("risk") ||
+    lowerMessage.includes("alert") ||
+    lowerMessage.includes("liquidation")
   ) {
-    return "Hello! 👋 I'm the IntentX Support Agent. I can help you with:\n\n• **Intent parsing** - Describe your financial goals in plain English\n• **Vault information** - Learn about our 6 staking/lending vaults\n• **DeFi strategies** - Get advice on swaps, staking, and lending\n• **App navigation** - Guide through Dashboard, Vaults, Intent Lab, Analytics\n\nWhat would you like to know?";
+    return getRiskAlerts();
   }
 
-  if (lowerMessage.includes("vault")) {
-    return `**Vaults Overview:**\n\nWe offer 6 vaults with competitive APYs:\n\n🔹 **Staking Vaults:**\n• ETH Staking - 5.2% APY\n• WETH Staking - 5.8% APY\n• stETH Staking - 18.5% APY\n\n🔹 **Lending Vaults:**\n• USDC Lending - 7.2% APY\n• DAI Lending - 6.8% APY\n• USDT Lending - 7.5% APY\n\nVisit the **Vaults** page to start earning! 💰`;
+  // Intent explanation
+  if (
+    lowerMessage.includes("swap") ||
+    lowerMessage.includes("stake") ||
+    lowerMessage.includes("borrow") ||
+    lowerMessage.includes("supply")
+  ) {
+    return generateIntentExplanation(userMessage);
   }
 
-  if (lowerMessage.includes("intent") || lowerMessage.includes("parse")) {
-    return `**Intent Parsing (Intent Lab):**\n\n1️⃣ Write your goal in plain English\n   Example: "Swap 100 USDC for ETH on Uniswap"\n\n2️⃣ Click "Parse Intent" - the AI breaks it into steps\n\n3️⃣ Review the step-by-step preview with gas estimates\n\n4️⃣ Click "Execute" - processed in ~1.5 seconds\n\n5️⃣ View transaction hash and explorer link\n\nSupported actions: Swap, Stake, Supply, Borrow, Withdraw, Unstake`;
+  // Help/greeting
+  if (
+    lowerMessage.includes("help") ||
+    lowerMessage.includes("hello") ||
+    lowerMessage.includes("hi")
+  ) {
+    return `**Welcome to IntentX Support! 🤖**\n\nI can help with:\n\n• **FAQ** - Browse our knowledge base\n• **Strategies** - Get portfolio optimization hints\n• **Risk Analysis** - Understand potential risks\n• **Intent Explanation** - Understand your DeFi transactions\n• **Vaults Info** - Learn about staking/lending opportunities\n\n**Try asking:**\n- "What's the best yield strategy?"\n- "How do I stake ETH?"\n- "What are the risks of borrowing?"`;
   }
 
+  // APY/Yield questions
+  if (lowerMessage.includes("apy") || lowerMessage.includes("yield")) {
+    return `**💰 Vault APYs:**\n\n🔹 **Staking Vaults:**\n• ETH Staking: 5.2% APY\n• WETH Staking: 5.8% APY\n• stETH Staking: 18.5% APY\n\n🔹 **Lending Vaults:**\n• USDC Lending: 7.2% APY\n• DAI Lending: 6.8% APY\n• USDT Lending: 7.5% APY\n\nAPYs are variable based on market conditions. Higher APY = higher risk.`;
+  }
+
+  // Wallet/Connection
+  if (
+    lowerMessage.includes("wallet") ||
+    lowerMessage.includes("connect") ||
+    lowerMessage.includes("metamask")
+  ) {
+    return `**🔐 Wallet Connection:**\n\n1️⃣ Click **Connect Wallet** button (top-right)\n2️⃣ MetaMask popup opens\n3️⃣ Select your account\n4️⃣ Approve connection\n5️⃣ Your address appears in navbar\n\n✅ Ready to trade!\n\n**Security**: Your private keys stay in MetaMask. IntentX never has access to your funds.`;
+  }
+
+  // Networks
   if (lowerMessage.includes("network") || lowerMessage.includes("chain")) {
-    return `**Multi-Chain Support:**\n\nIntentX operates on 4 networks:\n\n🟦 **BlockDAG Testnet** (Primary)\n🟦 **Ethereum Goerli**\n🟦 **Polygon Mumbai**\n🟦 **Hardhat Local** (Development)\n\nSwitch networks using the network selector in the navbar to execute intents on your chosen blockchain!`;
+    return `**🌍 Supported Networks:**\n\n🟦 **BlockDAG Testnet** (Primary)\n🟦 **Ethereum Goerli**\n🟦 **Polygon Mumbai**\n🟦 **Hardhat Local** (Dev)\n\nSwitch networks in the navbar. Each network has its own liquidity and gas prices.`;
   }
 
-  if (lowerMessage.includes("dashboard")) {
-    return `**Dashboard Overview:**\n\nThe Dashboard shows:\n\n📊 **Stats Cards:**\n• Total Volume - All-time DeFi volume\n• Active Intents - Currently executing transactions\n• Total Gas Saved - Optimized execution savings\n• Avg Execution Time - Sub-2 second performance\n\n📈 **Recent Transactions** - Confirmed, pending, or failed\n\n🔗 **Explorer Links** - Click to verify on blockchain`;
-  }
-
-  if (lowerMessage.includes("analytics")) {
-    return `**Analytics Page:**\n\nView detailed metrics:\n\n📈 **Portfolio Value Chart** - Your holdings over time\n📊 **Protocol Distribution** - Where your assets are deployed\n📉 **Transaction Volume** - Activity trends\n⚡ **Performance Metrics** - Success rates and execution times`;
-  }
-
-  if (lowerMessage.includes("gas")) {
-    return `**Gas Optimization:**\n\nIntentX optimizes gas through:\n\n⚡ **Batch Processing** - Combine multiple transactions\n⚡ **Multi-hop Routing** - Find efficient swap paths\n⚡ **Smart Routing** - Route through lowest-fee protocols\n\nResult: Sub-2 second perceived execution with minimal gas costs!`;
-  }
-
-  if (lowerMessage.includes("swap")) {
-    return `**DEX Trading (Swap):**\n\n1️⃣ Go to Intent Lab\n2️⃣ Say: "Swap [amount] [token1] for [token2]"\n   Example: "Swap 100 USDC for WETH"\n3️⃣ Preview shows the route and gas estimate\n4️⃣ Execute - receives quote and processes swap\n5️⃣ View transaction on explorer\n\nSupported: Uniswap-style AMMs on all networks`;
-  }
-
-  if (lowerMessage.includes("stake")) {
-    return `**Staking in Vaults:**\n\n1️⃣ Go to **Vaults** page\n2️⃣ Select a staking vault (ETH, WETH, stETH)\n3️⃣ Enter amount to stake\n4️⃣ Click "Stake"\n5️⃣ Confirm in wallet\n6️⃣ See updated balance and earning APY\n\nYou earn rewards continuously on your staked amount! 💰`;
-  }
-
-  if (lowerMessage.includes("borrow") || lowerMessage.includes("lend")) {
-    return `**Lending & Borrowing:**\n\n**Supply (Earn Interest):**\n1️⃣ Select a lending vault\n2️⃣ Supply tokens\n3️⃣ Earn 6-7.5% APY instantly\n\n**Borrow Against Collateral:**\n1️⃣ Supply collateral first (75% LTV)\n2️⃣ Borrow up to 75% of collateral value\n3️⃣ Use borrowed funds or trade\n4️⃣ Repay anytime, pay interest only on outstanding\n\nLow risk, high flexibility!`;
-  }
-
-  if (lowerMessage.includes("wallet") || lowerMessage.includes("connect")) {
-    return `**MetaMask Connection:**\n\n1️⃣ Click **Connect Wallet** button (top-right navbar)\n2️⃣ MetaMask popup opens\n3️⃣ Select account to connect\n4️⃣ Approve connection\n5️⃣ Your wallet address appears in navbar\n\nNow you can:\n✅ Create intents\n✅ Stake in vaults\n✅ Execute swaps & borrows`;
-  }
-
-  if (lowerMessage.includes("faq")) {
-    return `**FAQ Section:**\n\nThe FAQ page has comprehensive answers on:\n\n❓ What is IntentX?\n❓ How does intent parsing work?\n❓ What are the supported DeFi primitives?\n❓ Which networks are supported?\n❓ How are transactions optimized?\n❓ What are the security features?\n❓ How do I report issues?\n❓ What's the roadmap?\n\nVisit the FAQ page for full details!`;
+  // Gas/Fees
+  if (lowerMessage.includes("gas") || lowerMessage.includes("fee")) {
+    return `**⚡ Gas Optimization:**\n\nIntentX saves 20-40% gas through:\n\n• **Batching** - Combine multiple operations\n• **Multi-hop routing** - Find efficient swap paths\n• **Smart selection** - Route through lowest-fee protocols\n\n💡 **Tip**: BlockDAG has the lowest fees. Use it for bulk operations.`;
   }
 
   // Default helpful response
-  return `I'm the IntentX Support Agent! 🤖\n\nI can help with:\n\n• **Vaults** - Learn about staking/lending opportunities\n• **Intent Lab** - How to create and execute intents\n• **Networks** - Blockchain support\n• **Trading** - Swap, stake, lend, borrow\n• **Dashboard** - Portfolio overview\n• **Analytics** - Performance metrics\n• **Wallet** - MetaMask connection\n\nWhat would you like to know?`;
+  return `**I'm here to help! 🤖**\n\nI can assist with:\n\n📚 **FAQ** - Browse knowledge base\n📊 **Strategies** - Portfolio optimization tips\n⚠️ **Risk Analysis** - Understand potential dangers\n💡 **Intent Help** - Understand DeFi transactions\n💰 **Vaults** - Staking/lending info\n⚡ **Gas** - Fee optimization tips\n\n**Common questions:** "What's the best APY?" "How do I stake?" "What are the risks?"`;
 }
 
 export async function generateSupportResponse(
@@ -95,40 +245,18 @@ export async function generateSupportResponse(
   _conversationHistory: ConversationMessage[]
 ): Promise<string> {
   try {
-    // Try to use OpenAI if API key is available
-    if (process.env.OPENAI_API_KEY) {
-      const OpenAI = await import("openai").then((m) => m.default);
-      const openai = new OpenAI({
-        apiKey: process.env.OPENAI_API_KEY,
-      });
-
-      const systemPrompt = `You are IntentX Support, a knowledgeable AI assistant for the IntentX Protocol - an intent-based DeFi aggregator.
-
-IntentX allows users to express financial goals in natural language and execute them across multiple blockchains (BlockDAG, Ethereum, Polygon). It features DEX trading, Lending/Borrowing, and Staking with sub-2 second perceived execution times.
-
-Key features:
-- Dashboard: Portfolio overview, stats, transactions
-- Vaults: 6 staking/lending vaults (APY 5.2%-18.5%)
-- Intent Lab: Natural language parsing and execution
-- Analytics: Performance metrics and charts
-
-Be helpful, concise, and reference specific IntentX features when relevant.`;
-
-      const response = await openai.chat.completions.create({
-        model: "gpt-5",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userMessage },
-        ],
-        max_completion_tokens: 500,
-      });
-
-      return response.choices[0]?.message?.content || generateFallbackResponse(userMessage);
-    }
+    return generateMockResponse(userMessage);
   } catch (error) {
-    console.error("OpenAI API error:", error);
+    console.error("Support Agent Error:", error);
+    return "I encountered an issue. Please try again or check the FAQ section.";
   }
+}
 
-  // Fallback to pattern matching
-  return generateFallbackResponse(userMessage);
+export function getSuggestedPromptsForUI(): string[] {
+  return getSuggestedPrompts();
+}
+
+export function getAllFAQs(): Array<{ id: string; question: string; answer: string }> {
+  const kb = loadKnowledgeBase();
+  return kb.faqs || [];
 }

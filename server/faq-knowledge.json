@@ -1,0 +1,125 @@
+{
+  "faqs": [
+    {
+      "id": "what-is-intentx",
+      "question": "What is IntentX?",
+      "answer": "IntentX is an intent-based DeFi aggregator that allows users to describe their financial goals in natural language and automatically executes them across multiple blockchains. It combines DEX trading, lending/borrowing, and staking in one unified interface."
+    },
+    {
+      "id": "how-intent-parsing",
+      "question": "How does intent parsing work?",
+      "answer": "Simply describe your goal in plain English in the Intent Lab. Our AI breaks it down into executable steps, estimates gas costs, and shows you a preview before execution. Examples: 'Swap 100 USDC for ETH', 'Stake 50 ETH in Lido', 'Supply 5000 USDC to Aave'."
+    },
+    {
+      "id": "supported-defi-primitives",
+      "question": "What are the supported DeFi primitives?",
+      "answer": "IntentX supports three core primitives: (1) DEX Trading - swap tokens using AMM protocols, (2) Lending/Borrowing - supply assets to earn interest or borrow against collateral, (3) Staking - earn rewards by staking tokens in various vaults."
+    },
+    {
+      "id": "networks-supported",
+      "question": "Which networks are supported?",
+      "answer": "IntentX operates on 4 networks: BlockDAG Testnet (primary), Ethereum Goerli, Polygon Mumbai, and Hardhat Local (development). Select your preferred network using the network selector in the navbar."
+    },
+    {
+      "id": "transaction-optimization",
+      "question": "How are transactions optimized?",
+      "answer": "IntentX uses batch processing, multi-hop routing, and smart protocol selection to minimize gas costs. We achieve sub-2 second perceived execution times through optimistic UI updates and efficient transaction bundling."
+    },
+    {
+      "id": "vault-apy",
+      "question": "What are the vault APYs?",
+      "answer": "Our 6 vaults offer competitive yields: ETH Staking (5.2%), WETH Staking (5.8%), stETH Staking (18.5%), USDC Lending (7.2%), DAI Lending (6.8%), USDT Lending (7.5%). APYs are variable and subject to market conditions."
+    },
+    {
+      "id": "security-features",
+      "question": "What are the security features?",
+      "answer": "Security is paramount. We use audited smart contracts, multi-sig governance, non-custodial wallet integration, gas-safe patterns, proper access controls, and real-time risk monitoring. Always verify transactions before execution."
+    },
+    {
+      "id": "gas-saved-calculation",
+      "question": "How is gas saved calculated?",
+      "answer": "Gas savings are calculated by comparing your optimized route vs. a standard single-protocol approach. Multi-hop routing and batching typically save 20-40% in gas fees. Actual savings depend on market conditions and transaction complexity."
+    },
+    {
+      "id": "wallet-connection",
+      "question": "How do I connect my wallet?",
+      "answer": "Click the 'Connect Wallet' button in the top-right navbar. MetaMask will open - select your account, approve the connection, and you'll be ready to create intents and execute transactions. Your private keys never leave your device."
+    },
+    {
+      "id": "borrow-requirements",
+      "question": "What are the borrow requirements?",
+      "answer": "To borrow, you must first supply collateral. Our lending pools use a 75% LTV (Loan-to-Value) ratio, meaning you can borrow up to 75% of your collateral value. Interest rates are 3-8% depending on the asset."
+    }
+  ],
+  "suggestedPrompts": [
+    "Swap 100 USDC for WETH",
+    "Stake 10 ETH in Lido",
+    "Supply 5000 USDC to earn interest",
+    "What is the best yield farming strategy?",
+    "How do I minimize gas fees?",
+    "Compare ETH and stETH staking returns",
+    "What are the risks of lending USDC?"
+  ],
+  "strategyHints": [
+    {
+      "title": "Maximize Yield",
+      "description": "Stack high-APY vaults: Start with stETH (18.5%), then diversify into USDT lending (7.5%) for stability.",
+      "riskLevel": "medium"
+    },
+    {
+      "title": "Conservative Approach",
+      "description": "Focus on stables: USDC/DAI lending (6.8-7.2%) with lower volatility. Pair with 50% ETH staking (5.2%) for balanced returns.",
+      "riskLevel": "low"
+    },
+    {
+      "title": "Growth Strategy",
+      "description": "Use leverage: Supply stables as collateral, borrow for trading, deploy in high-yield vaults. Requires active monitoring.",
+      "riskLevel": "high"
+    },
+    {
+      "title": "Gas Optimization",
+      "description": "Batch operations: Group swaps/staking in one intent to save 30-40% gas. Use BlockDAG for lowest fees.",
+      "riskLevel": "low"
+    }
+  ],
+  "riskAlerts": [
+    {
+      "type": "liquidation",
+      "message": "If collateral drops >25%, liquidation risk increases. Maintain 80%+ LTV for safety.",
+      "severity": "warning"
+    },
+    {
+      "type": "slippage",
+      "message": "Large swaps may experience >2% slippage. Consider breaking into smaller orders.",
+      "severity": "info"
+    },
+    {
+      "type": "impermanent-loss",
+      "message": "LP tokens subject to impermanent loss. Monitor price divergence between paired assets.",
+      "severity": "warning"
+    },
+    {
+      "type": "smart-contract",
+      "message": "All contracts audited, but risks remain. Never stake more than you can afford to lose.",
+      "severity": "warning"
+    }
+  ],
+  "intentExamples": {
+    "swap": {
+      "example": "Swap 100 USDC for WETH",
+      "explanation": "This creates a swap intent that will: (1) Verify your USDC balance, (2) Get the best swap route, (3) Execute on Uniswap V3, (4) Deliver WETH to your wallet. Estimated gas: ~0.003 ETH."
+    },
+    "stake": {
+      "example": "Stake 50 ETH in Lido",
+      "explanation": "This stakes your ETH to earn ~5.2% APY. You receive stETH tokens that: (1) Represent your staked ETH, (2) Accumulate rewards daily, (3) Can be swapped anytime, (4) Are accepted as collateral for borrowing."
+    },
+    "borrow": {
+      "example": "Supply 10000 USDC and borrow 5000 DAI",
+      "explanation": "This supplies USDC to earn 7.2% APY while borrowing DAI at 8%. Your 10k USDC collateral supports borrowing up to 7.5k (75% LTV). Monitor to avoid liquidation at 80% LTV."
+    },
+    "yield": {
+      "example": "Optimize portfolio for max yield",
+      "explanation": "This analyzes your holdings and recommends: (1) Move stables to USDT lending (+7.5%), (2) Stake idle ETH (+5.2%), (3) Use stETH as collateral for DAI borrow/reinvest."
+    }
+  }
+}
