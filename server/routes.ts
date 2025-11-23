@@ -10,6 +10,9 @@ import {
 
 export async function registerRoutes(app: Express): Promise<Server> {
   
+  // Register execution explorer routes
+  await registerExecutionExplorerRoutes(app);
+
   // ============================================================================
   // ANALYTICS ROUTES
   // ============================================================================
@@ -334,6 +337,52 @@ function parseNaturalLanguage(text: string) {
   }
 
   return steps;
+}
+
+// ============================================================================
+// EXECUTION EXPLORER ROUTES
+// ============================================================================
+
+export async function registerExecutionExplorerRoutes(app: Express): Promise<void> {
+  app.get("/api/intents", async (_req, res) => {
+    try {
+      const intents = await storage.getAllIntents();
+      res.json(intents);
+    } catch (error) {
+      console.error("Intents Error:", error);
+      res.status(500).json({ error: "Failed to fetch intents" });
+    }
+  });
+
+  app.get("/api/intent/:id", async (req, res) => {
+    try {
+      const intent = await storage.getIntent(req.params.id);
+      if (!intent) {
+        return res.status(404).json({ error: "Intent not found" });
+      }
+      res.json(intent);
+    } catch (error) {
+      console.error("Intent Error:", error);
+      res.status(500).json({ error: "Failed to fetch intent" });
+    }
+  });
+
+  app.get("/api/intent/:id/logs", async (req, res) => {
+    try {
+      const intent = await storage.getIntent(req.params.id);
+      if (!intent) {
+        return res.status(404).json({ error: "Intent not found" });
+      }
+      res.json({
+        logs: intent.logs || [],
+        executionRoute: intent.executionRoute,
+        parsedSteps: intent.parsedSteps || [],
+      });
+    } catch (error) {
+      console.error("Logs Error:", error);
+      res.status(500).json({ error: "Failed to fetch logs" });
+    }
+  });
 }
 
 // ============================================================================

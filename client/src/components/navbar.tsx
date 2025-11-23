@@ -12,6 +12,7 @@ export function Navbar() {
     { path: "/", label: "Dashboard" },
     { path: "/vaults", label: "Vaults" },
     { path: "/intent-lab", label: "Intent Lab" },
+    { path: "/execution-explorer", label: "Explorer" },
     { path: "/analytics", label: "Analytics" },
     { path: "/faq", label: "FAQ" },
   ];
