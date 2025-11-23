@@ -2,6 +2,8 @@ import { Link, useLocation } from "wouter";
 import { NetworkSelector } from "./network-selector";
 import { WalletConnect } from "./wallet-connect";
 import { ThemeToggle } from "./theme-toggle";
+import { AISupportAgent } from "./ai-support-agent";
+import logoSvg from "@assets/intentx-logo.png";
 
 export function Navbar() {
   const [location] = useLocation();
@@ -21,9 +23,7 @@ export function Navbar() {
       <div className="flex items-center justify-between h-16 px-4 md:px-6">
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2 hover-elevate px-2 md:px-3 py-2 rounded-lg transition-all" data-testid="link-logo">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-purple-600 flex items-center justify-center flex-shrink-0">
-            <span className="text-white font-bold text-lg">IX</span>
-          </div>
+          <img src={logoSvg} alt="IntentX Protocol" className="w-8 h-8 flex-shrink-0" />
           <span className="text-lg md:text-xl font-bold text-foreground hidden sm:inline">IntentX</span>
         </Link>
 
@@ -47,6 +47,7 @@ export function Navbar() {
 
         {/* Right Section */}
         <div className="flex items-center gap-2 md:gap-3">
+          <AISupportAgent />
           <ThemeToggle />
           <NetworkSelector />
           <WalletConnect />

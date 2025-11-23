@@ -2,6 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { insertIntentSchema } from "@shared/schema";
+import { generateSupportResponse } from "./ai-support";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   
@@ -329,4 +330,43 @@ function parseNaturalLanguage(text: string) {
   }
 
   return steps;
+}
+
+// ============================================================================
+// AI SUPPORT ROUTES
+// ============================================================================
+
+export async function registerAIRoutes(app: Express): Promise<void> {
+  app.post("/api/ai-support", async (req, res) => {
+    try {
+      const { message, conversationHistory } = req.body;
+
+      if (!message || typeof message !== "string") {
+        return res.status(400).json({ error: "Missing or invalid message" });
+      }
+
+      if (
+        !Array.isArray(conversationHistory) &&
+        conversationHistory !== undefined
+      ) {
+        return res
+          .status(400)
+          .json({ error: "Invalid conversation history format" });
+      }
+
+      const response = await generateSupportResponse(
+        message,
+        conversationHistory || []
+      );
+
+      res.json({ response });
+    } catch (error) {
+      console.error("AI Support Error:", error);
+      res.status(500).json({
+        error: "Failed to generate support response",
+        response:
+          "I'm having trouble connecting to the AI service. Please try again later or check out our FAQ section.",
+      });
+    }
+  });
 }
