@@ -11,7 +11,7 @@ import {
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
 import { Network, ChevronDown, CheckCircle2 } from "lucide-react";
-import { useMediaQuery } from "@/hooks/use-mobile";
+import { useIsMobile } from "@/hooks/use-mobile";
 import type { Network as NetworkType } from "@shared/schema";
 
 const NETWORKS: NetworkType[] = [
@@ -60,7 +60,7 @@ const NETWORKS: NetworkType[] = [
 export function NetworkSelector() {
   const [selectedNetwork, setSelectedNetwork] = useState<NetworkType>(NETWORKS[0]);
   const [open, setOpen] = useState(false);
-  const isMobile = useMediaQuery("(max-width: 768px)");
+  const isMobile = useIsMobile();
 
   if (isMobile) {
     return (
