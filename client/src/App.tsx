@@ -11,6 +11,7 @@ import Vaults from "@/pages/vaults";
 import IntentLab from "@/pages/intent-lab";
 import Analytics from "@/pages/analytics";
 import FAQPage from "@/pages/faq";
+import ExecutionExplorer from "@/pages/execution-explorer";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -20,6 +21,7 @@ function Router() {
       <Route path="/vaults" component={Vaults} />
       <Route path="/intent-lab" component={IntentLab} />
       <Route path="/analytics" component={Analytics} />
+      <Route path="/execution-explorer" component={ExecutionExplorer} />
       <Route path="/faq" component={FAQPage} />
       <Route component={NotFound} />
     </Switch>

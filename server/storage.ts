@@ -41,11 +41,24 @@ export class MemStorage implements IStorage {
     this.transactions = new Map();
     this.faqs = new Map();
     
-    // Initialize with mock data
-    this.initializeMockData();
+    // Initialize with mock data (async, will complete after constructor)
+    this.initializeAsync();
   }
 
-  private initializeMockData() {
+  private async initializeAsync() {
+    await this.initializeMockData();
+  }
+
+  private async initializeMockData() {
+    // Mock Intents - using dynamic import for ES module compatibility
+    try {
+      const { generateMockIntents } = await import("./mock-intents");
+      const mockIntents = generateMockIntents();
+      mockIntents.forEach((intent: Intent) => this.intents.set(intent.id, intent));
+    } catch (e) {
+      console.log("Could not load mock intents");
+    }
+
     // Mock Vaults
     const mockVaults: Vault[] = [
       {

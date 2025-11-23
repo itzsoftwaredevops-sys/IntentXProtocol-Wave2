@@ -223,6 +223,25 @@ npx hardhat run scripts/deploy.ts --network blockdag  # Deploy to BlockDAG
 
 ## Recent Updates
 
+### Task 0-1: Execution Explorer Page (Completed ✅)
+- ✅ New `/execution-explorer` route with full page implementation
+- ✅ Intent status tabs: Pending, Executing, Completed, Failed, Parsing, Simulating, Draft
+- ✅ Each intent card displays: ID, owner, tokenIn→tokenOut, amount, slippage, createdAt, gasUsed, txHash
+- ✅ Advanced filters: status, token pair, date range
+- ✅ Search functionality for intent ID, owner, or natural language
+- ✅ Pagination with customizable page size (10 per page)
+- ✅ View Logs modal with:
+  - Intent summary (ID, Status, Tx Hash, Gas Used)
+  - Execution route visualization
+  - Parsed steps with gas estimates
+  - Event timeline (IntentCreated, IntentParsed, IntentExecuting, IntentCompleted/Failed)
+  - Raw transaction data in JSON format
+- ✅ Backend endpoints: GET /api/intents, GET /api/intent/:id, GET /api/intent/:id/logs
+- ✅ 35 mock intents with realistic execution logs
+- ✅ Mobile-responsive design with card grid
+- ✅ Navbar and mobile nav integration with Explorer link
+- ✅ Status color coding and timeline visualization
+
 ### Task 0: Logo Integration & AI Support Agent (Completed ✅)
 - ✅ IntentX brand logo integrated into navbar
 - ✅ AI Support Agent chatbot implemented with mock responses (no API keys required)

@@ -1,10 +1,11 @@
 import { Link, useLocation } from "wouter";
-import { Home, Coins, Lightbulb, BarChart3, HelpCircle } from "lucide-react";
+import { Home, Coins, Lightbulb, Search, BarChart3, HelpCircle } from "lucide-react";
 
 const navItems = [
   { path: "/", label: "Dashboard", icon: Home },
   { path: "/vaults", label: "Vaults", icon: Coins },
   { path: "/intent-lab", label: "Intent Lab", icon: Lightbulb },
+  { path: "/execution-explorer", label: "Explorer", icon: Search },
   { path: "/analytics", label: "Analytics", icon: BarChart3 },
   { path: "/faq", label: "FAQ", icon: HelpCircle },
 ];

@@ -7,6 +7,18 @@ import { z } from "zod";
 export const intentSchema = z.object({
   id: z.string(),
   naturalLanguage: z.string(),
+  owner: z.string().optional(),
+  tokenIn: z.string().optional(),
+  tokenOut: z.string().optional(),
+  amount: z.string().optional(),
+  slippage: z.string().optional(),
+  gasUsed: z.string().optional(),
+  executionRoute: z.string().optional(),
+  logs: z.array(z.object({
+    timestamp: z.string(),
+    event: z.string(),
+    data: z.record(z.unknown()),
+  })).optional(),
   parsedSteps: z.array(z.object({
     action: z.enum(['swap', 'stake', 'unstake', 'supply', 'borrow', 'withdraw']),
     protocol: z.string(),
