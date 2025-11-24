@@ -8,11 +8,23 @@ import {
   getSuggestedPromptsForUI,
   getAllFAQs,
 } from "./ai-support";
+import { offChainExecutor } from "./off-chain-executor";
+import { routeOptimizer } from "./route-optimizer";
+import { bridgeRouter } from "./bridge-router";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   
   // Register execution explorer routes
   await registerExecutionExplorerRoutes(app);
+
+  // Register off-chain executor routes
+  registerExecutorRoutes(app);
+
+  // Register route optimizer routes
+  registerOptimizerRoutes(app);
+
+  // Register bridge router routes
+  registerBridgeRoutes(app);
 
   // ============================================================================
   // ANALYTICS ROUTES
@@ -602,6 +614,210 @@ export async function registerAIRoutes(app: Express): Promise<void> {
     } catch (error) {
       console.error("FAQ List Error:", error);
       res.json({ faqs: [] });
+    }
+  });
+}
+
+// ============================================================================
+// OFF-CHAIN EXECUTOR ROUTES (Relayer/Bundle Submission)
+// ============================================================================
+
+function registerExecutorRoutes(app: Express): void {
+  app.post("/api/executor/sign-intent", (req, res) => {
+    try {
+      const { user, intentData } = req.body;
+      if (!user || !intentData) {
+        return res.status(400).json({ error: "Missing user or intentData" });
+      }
+      const intent = offChainExecutor.signIntent(user, intentData);
+      res.json({
+        success: true,
+        intent,
+        message: "Intent signed and queued for execution",
+      });
+    } catch (error) {
+      console.error("Sign Intent Error:", error);
+      res.status(500).json({ error: "Failed to sign intent" });
+    }
+  });
+
+  app.post("/api/executor/submit-bundle", async (req, res) => {
+    try {
+      const { chainId, intentsToSubmit } = req.body;
+      const result = await offChainExecutor.submitBundle(chainId || 808080, intentsToSubmit);
+      res.json({
+        success: true,
+        bundle: result,
+        message: `Bundle submitted: ${result.totalIntents} intents, ${result.txHash}`,
+      });
+    } catch (error) {
+      console.error("Submit Bundle Error:", error);
+      res.status(500).json({ error: "Failed to submit bundle" });
+    }
+  });
+
+  app.get("/api/executor/bundle-status/:bundleId", (req, res) => {
+    try {
+      const status = offChainExecutor.getBundleStatus(req.params.bundleId);
+      if (!status) {
+        return res.status(404).json({ error: "Bundle not found" });
+      }
+      res.json({ success: true, bundle: status });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch bundle status" });
+    }
+  });
+
+  app.get("/api/executor/pending-intents", (_req, res) => {
+    try {
+      const count = offChainExecutor.getPendingIntentsCount();
+      res.json({
+        pendingIntents: count,
+        message: `${count} intents pending in executor queue`,
+      });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch pending intents" });
+    }
+  });
+}
+
+// ============================================================================
+// ROUTE OPTIMIZER ROUTES (RAG/AI Route Selection)
+// ============================================================================
+
+function registerOptimizerRoutes(app: Express): void {
+  app.post("/api/optimizer/route", async (req, res) => {
+    try {
+      const { fromToken, toToken, amount, chainId } = req.body;
+      if (!fromToken || !toToken || !amount) {
+        return res.status(400).json({
+          error: "Missing fromToken, toToken, or amount",
+        });
+      }
+
+      const result = await routeOptimizer.optimizeRoute(
+        fromToken,
+        toToken,
+        amount,
+        chainId || 808080
+      );
+
+      res.json({
+        success: true,
+        optimization: result,
+        message: `Optimized ${result.routes.length} routes for ${fromToken} → ${toToken}`,
+      });
+    } catch (error) {
+      console.error("Route Optimization Error:", error);
+      res.status(500).json({ error: "Failed to optimize route" });
+    }
+  });
+
+  app.get("/api/optimizer/analysis/:intentId", (req, res) => {
+    try {
+      // In production, would query persistent storage
+      res.json({
+        success: true,
+        message: `Route analysis for intent ${req.params.intentId} (simulated)`,
+        analysis: {
+          strategy: "balanced",
+          expectedSlippage: 0.3,
+          gasEstimate: "85000",
+          estimatedTime: 30,
+        },
+      });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch route analysis" });
+    }
+  });
+}
+
+// ============================================================================
+// BRIDGE ROUTER ROUTES (Cross-Chain Routing)
+// ============================================================================
+
+function registerBridgeRoutes(app: Express): void {
+  app.post("/api/bridge/check-liquidity", (req, res) => {
+    try {
+      const { chainId, token, amount } = req.body;
+      if (!chainId || !token || !amount) {
+        return res
+          .status(400)
+          .json({ error: "Missing chainId, token, or amount" });
+      }
+
+      const sufficient = bridgeRouter.checkLiquidity(chainId, token, amount);
+      res.json({
+        success: true,
+        chainId,
+        token,
+        amount,
+        sufficientLiquidity: sufficient,
+        message: sufficient
+          ? "Liquidity available on primary chain"
+          : "Insufficient liquidity, bridge may be needed",
+      });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to check liquidity" });
+    }
+  });
+
+  app.post("/api/bridge/find-route", (req, res) => {
+    try {
+      const { primaryChainId, token, amount } = req.body;
+      if (!primaryChainId || !token || !amount) {
+        return res
+          .status(400)
+          .json({ error: "Missing required parameters" });
+      }
+
+      const route = bridgeRouter.findBestRoute(primaryChainId, token, amount);
+      if (!route) {
+        return res.json({
+          success: true,
+          route: null,
+          message: "No bridge needed, liquidity available on primary chain",
+        });
+      }
+
+      res.json({
+        success: true,
+        route,
+        message: `Bridge route found: ${route.sourceChain.name} → ${route.destinationChain.name}`,
+      });
+    } catch (error) {
+      console.error("Find Route Error:", error);
+      res.status(500).json({ error: "Failed to find bridge route" });
+    }
+  });
+
+  app.post("/api/bridge/execute", async (req, res) => {
+    try {
+      const { primaryChainId, token, amount, targetChainId } = req.body;
+      const intent = await bridgeRouter.executeXChainIntent(
+        primaryChainId,
+        token,
+        amount,
+        targetChainId
+      );
+
+      res.json({
+        success: true,
+        crossChainIntent: intent,
+        message: `Cross-chain intent initiated: ${intent.id}`,
+      });
+    } catch (error) {
+      console.error("Execute XChain Error:", error);
+      res.status(500).json({ error: String(error) });
+    }
+  });
+
+  app.get("/api/bridge/plan", (_req, res) => {
+    try {
+      const plan = bridgeRouter.generateBridgePlan();
+      res.json({ success: true, plan });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to generate bridge plan" });
     }
   });
 }
