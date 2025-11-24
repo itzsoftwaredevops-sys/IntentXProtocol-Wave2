@@ -1,5 +1,6 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
+import { randomUUID } from "crypto";
 import { storage } from "./storage";
 import { insertIntentSchema } from "@shared/schema";
 import {
@@ -229,6 +230,161 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(intent);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch intent" });
+    }
+  });
+
+  // ============================================================================
+  // BATCHING & AA ROUTES (Scalability Features)
+  // ============================================================================
+
+  /**
+   * Batch Intent Processing
+   * Accepts multiple intents and processes them in parallel
+   * Demonstrates scalability by handling 10-100s of intents simultaneously
+   * Response time includes parsing + execution time across all intents
+   */
+  app.post("/api/intent/batch", async (req, res) => {
+    try {
+      const { intents, metadata } = req.body;
+      
+      if (!Array.isArray(intents) || intents.length === 0) {
+        return res.status(400).json({ error: "Must provide array of intents" });
+      }
+
+      if (intents.length > 100) {
+        return res.status(400).json({ error: "Batch size cannot exceed 100 intents" });
+      }
+
+      const batchId = `batch-${randomUUID()}`;
+      const startTime = Date.now();
+      const processedIntents = [];
+
+      // Process intents in parallel for better scalability
+      const promises = intents.map(async (intentData) => {
+        try {
+          const result = insertIntentSchema.safeParse(intentData);
+          if (!result.success) {
+            return { status: 'failed', error: result.error.message };
+          }
+
+          const intent = await storage.createIntent(result.data);
+          
+          // Simulate fast parsing (10-50ms per intent in batch mode)
+          const parsedSteps = parseNaturalLanguage(intent.naturalLanguage);
+          const totalGas = parsedSteps.reduce((sum, step) => {
+            const gas = parseFloat(step.estimatedGas || "0");
+            return sum + gas;
+          }, 0);
+
+          // Simulate fast execution (100-200ms per intent in batch mode)
+          const txHash = `0x${Math.random().toString(16).substring(2, 66)}`;
+          
+          const updated = await storage.updateIntent(intent.id, {
+            parsedSteps,
+            status: 'completed',
+            totalGasEstimate: totalGas.toFixed(6) + " ETH",
+            executedAt: new Date().toISOString(),
+            txHash,
+          });
+
+          return {
+            status: 'completed',
+            intentId: updated?.id || intent.id,
+            txHash,
+            gasUsed: updated?.totalGasEstimate || (totalGas.toFixed(6) + " ETH"),
+          };
+        } catch (error) {
+          return { status: 'failed', error: String(error) };
+        }
+      });
+
+      const results = await Promise.all(promises);
+      const endTime = Date.now();
+      const totalTime = endTime - startTime;
+
+      res.json({
+        batchId,
+        totalIntents: intents.length,
+        successCount: results.filter(r => r.status === 'completed').length,
+        failureCount: results.filter(r => r.status === 'failed').length,
+        totalProcessingTimeMs: totalTime,
+        avgTimePerIntentMs: Math.round(totalTime / intents.length),
+        results,
+        metadata: {
+          ...metadata,
+          processedAt: new Date().toISOString(),
+        },
+      });
+    } catch (error) {
+      console.error("Batch error:", error);
+      res.status(500).json({ error: "Failed to process batch" });
+    }
+  });
+
+  /**
+   * Account Abstraction (Gasless) Intent Execution
+   * Simulates account abstraction protocol for gas-free transactions
+   * In production: uses bundlers and paymasters to abstract gas costs
+   * For demo: instantly executes with zero gas cost simulation
+   */
+  app.post("/api/intent/aa-gasless", async (req, res) => {
+    try {
+      const { naturalLanguage, userOperation } = req.body;
+
+      if (!naturalLanguage) {
+        return res.status(400).json({ error: "Natural language required" });
+      }
+
+      const startTime = Date.now();
+
+      // Create and process intent with AA
+      const result = insertIntentSchema.safeParse({ naturalLanguage });
+      if (!result.success) {
+        return res.status(400).json({ error: "Invalid request body", details: result.error });
+      }
+
+      const intent = await storage.createIntent(result.data);
+      const parsedSteps = parseNaturalLanguage(intent.naturalLanguage);
+      const totalGas = parsedSteps.reduce((sum, step) => {
+        const gas = parseFloat(step.estimatedGas || "0");
+        return sum + gas;
+      }, 0);
+
+      // Simulate bundler signature and execution (150-250ms)
+      await new Promise(resolve => setTimeout(resolve, Math.random() * 100 + 150));
+
+      const userOpHash = `0x${Math.random().toString(16).substring(2, 66)}`;
+      const bundlerTxHash = `0x${Math.random().toString(16).substring(2, 66)}`;
+
+      const updated = await storage.updateIntent(intent.id, {
+        parsedSteps,
+        status: 'completed',
+        totalGasEstimate: '0', // Gasless!
+        executedAt: new Date().toISOString(),
+        txHash: bundlerTxHash,
+      });
+
+      const endTime = Date.now();
+
+      res.json({
+        success: true,
+        intentId: updated?.id || intent.id,
+        userOpHash,
+        bundlerTxHash,
+        executionTimeMs: endTime - startTime,
+        gasCost: '$0.00 (Sponsored by IntentX Protocol)',
+        status: 'completed',
+        userOperation: {
+          sender: userOperation?.sender || '0x' + Math.random().toString(16).substring(2, 42),
+          nonce: userOperation?.nonce || Math.floor(Math.random() * 1000),
+          callData: userOperation?.callData || '0x',
+          signature: userOperation?.signature || `0x${Math.random().toString(16).substring(2, 130)}`,
+        },
+        message: 'Intent executed via Account Abstraction - Zero gas cost!',
+      });
+    } catch (error) {
+      console.error("AA error:", error);
+      res.status(500).json({ error: "Failed to execute via AA" });
     }
   });
 
