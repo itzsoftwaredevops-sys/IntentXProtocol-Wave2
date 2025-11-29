@@ -1,0 +1,98 @@
+{
+  "faqs": [
+    {
+      "id": "swap-1",
+      "question": "How do I execute a swap?",
+      "answer": "To execute a swap: 1) Enter your intent in natural language (e.g., 'Swap 10 ETH for USDC'), 2) Click 'Parse Intent' to see the parsed action, 3) Review the route and slippage, 4) Click 'Execute' to submit the transaction."
+    },
+    {
+      "id": "slippage-1",
+      "question": "What is slippage and how can I minimize it?",
+      "answer": "Slippage is the difference between expected and actual price. To minimize: 1) Use lower swap amounts, 2) Check market conditions before executing, 3) Use 'low slippage' in your intent, 4) Split large trades across multiple steps."
+    },
+    {
+      "id": "vault-1",
+      "question": "How do vaults work and what is APY?",
+      "answer": "Vaults aggregate capital to earn yield. APY (Annual Percentage Yield) shows annual returns. IntentX vaults offer 5-10% APY depending on strategy. Higher APY typically means higher risk. Always review the vault documentation before depositing."
+    },
+    {
+      "id": "gas-1",
+      "question": "What are gas fees?",
+      "answer": "Gas fees are costs to execute transactions on the blockchain. They vary by network congestion. Tips: 1) Execute during low-traffic times, 2) Bundle multiple actions, 3) Use L2 networks like Polygon for lower fees."
+    },
+    {
+      "id": "network-1",
+      "question": "Which networks does IntentX support?",
+      "answer": "IntentX supports: Hardhat (local), BlockDAG Testnet (primary), Ethereum Goerli (testnet), Polygon Mumbai (testnet). You can switch networks in the top bar. Each network requires the appropriate RPC configuration."
+    },
+    {
+      "id": "security-1",
+      "question": "Is IntentX safe?",
+      "answer": "IntentX includes multiple security measures: Access control (Ownable), reentrancy guards, safe token transfers (SafeERC20), and comprehensive event logging. Always verify contract addresses and audit reports before use."
+    },
+    {
+      "id": "stake-1",
+      "question": "How do I stake tokens?",
+      "answer": "To stake: 1) Say 'Stake 10 ETH' in Intent Lab, 2) Parser will identify staking action, 3) Choose a vault with desired APY, 4) Approve token spending, 5) Execute transaction. Your rewards accrue continuously."
+    },
+    {
+      "id": "lend-1",
+      "question": "What is lending in DeFi?",
+      "answer": "Lending means supplying tokens to earn interest. Others borrow your tokens and pay interest. Risks: Smart contract bugs, liquidation if collateral value drops. Benefits: Passive income, composability with other protocols."
+    },
+    {
+      "id": "optimize-1",
+      "question": "How can I optimize my intent execution?",
+      "answer": "Optimization strategies: 1) Use AI Assistant for suggestions, 2) Enable batching for multiple intents, 3) Consider cross-chain routes for better rates, 4) Review gas costs vs. expected returns, 5) Use limit orders instead of market orders."
+    },
+    {
+      "id": "error-1",
+      "question": "What does 'Insufficient Balance' mean?",
+      "answer": "You're trying to send more tokens than you own. Solution: 1) Check your balance in Wallet Profile, 2) Reduce swap/stake amount, 3) Deposit more funds, 4) Ensure you have enough for gas fees too."
+    }
+  ],
+  "strategyHints": [
+    {
+      "title": "Conservative",
+      "description": "Low-risk, stable yields. Suitable for risk-averse users. Uses established protocols with high liquidity.",
+      "riskLevel": "low"
+    },
+    {
+      "title": "Maximize Yield",
+      "description": "Higher returns with moderate risk. Combines multiple strategies to optimize APY. Requires active monitoring.",
+      "riskLevel": "medium"
+    },
+    {
+      "title": "Growth",
+      "description": "Capital appreciation focus. Allocates to emerging protocols and higher-yield opportunities. Higher volatility.",
+      "riskLevel": "high"
+    },
+    {
+      "title": "Gas Optimization",
+      "description": "Minimizes transaction costs through batching and L2 networks. Best for multiple operations.",
+      "riskLevel": "low"
+    }
+  ],
+  "riskAlerts": [
+    {
+      "type": "Liquidation",
+      "message": "Your collateral is approaching liquidation threshold. Consider depositing more collateral or closing positions.",
+      "severity": "critical"
+    },
+    {
+      "type": "Slippage",
+      "message": "High market volatility detected. Actual execution price may differ significantly from quote.",
+      "severity": "warning"
+    },
+    {
+      "type": "ImpermanentLoss",
+      "message": "LP position showing impermanent loss. Monitor ratios and consider rebalancing.",
+      "severity": "info"
+    },
+    {
+      "type": "SmartContractRisk",
+      "message": "Interacting with unaudited contract. Proceed with caution and limit exposure.",
+      "severity": "critical"
+    }
+  ]
+}
