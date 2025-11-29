@@ -11,6 +11,7 @@ import {
 import { offChainExecutor } from "./off-chain-executor";
 import { routeOptimizer } from "./route-optimizer";
 import { bridgeRouter } from "./bridge-router";
+import { parseIntent } from "./intent-parser";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   
@@ -821,3 +822,133 @@ function registerBridgeRoutes(app: Express): void {
     }
   });
 }
+
+// ============================================================================
+// AI ASSISTANT & INTENT PARSER ROUTES
+// ============================================================================
+
+app.post("/api/intent/parse", async (req, res) => {
+  try {
+    const { intent } = req.body;
+    if (!intent || typeof intent !== "string") {
+      return res.status(400).json({ error: "Missing or invalid intent" });
+    }
+
+    // Sanitize input
+    const sanitized = intent.slice(0, 500).trim();
+
+    // Parse the intent
+    const parsed = await parseIntent(sanitized);
+
+    res.json({
+      success: true,
+      parsed,
+      message: `Intent parsed: ${parsed.action} - ${parsed.explanation}`,
+    });
+  } catch (error) {
+    console.error("Parse error:", error);
+    res
+      .status(500)
+      .json({ error: "Failed to parse intent", details: String(error) });
+  }
+});
+
+app.post("/api/assistant/query", async (req, res) => {
+  try {
+    const { message, intentId, walletAddress, conversationHistory } = req.body;
+
+    if (!message || typeof message !== "string") {
+      return res.status(400).json({ error: "Missing or invalid message" });
+    }
+
+    // Sanitize
+    const sanitized = message.slice(0, 1000).trim();
+
+    // Build context
+    const context = {
+      message: sanitized,
+      intentId: intentId || null,
+      walletAddress: walletAddress || null,
+      history:
+        (Array.isArray(conversationHistory) && conversationHistory.slice(-10)) ||
+        [],
+    };
+
+    // Generate response using AI support
+    const response = generateSupportResponse(sanitized);
+
+    // Add suggestions
+    let suggestions: string[] = [];
+    if (
+      sanitized.toLowerCase().includes("slippage") ||
+      sanitized.toLowerCase().includes("gas")
+    ) {
+      suggestions.push("Consider splitting into multiple smaller swaps");
+      suggestions.push("Check current network conditions");
+    }
+    if (
+      sanitized.toLowerCase().includes("yield") ||
+      sanitized.toLowerCase().includes("apy")
+    ) {
+      suggestions.push("Compare APY across different vaults");
+      suggestions.push("Consider Conservative strategy for lower risk");
+    }
+    if (
+      sanitized.toLowerCase().includes("swap") ||
+      sanitized.toLowerCase().includes("trade")
+    ) {
+      suggestions.push("Use natural language to describe your swap");
+      suggestions.push(
+        "Example: 'Swap 10 ETH for USDC with low slippage'"
+      );
+    }
+
+    res.json({
+      success: true,
+      response,
+      context,
+      suggestions:
+        suggestions.length > 0
+          ? suggestions
+          : [
+              "Ask me about swaps, staking, lending, or vaults",
+              "Request strategy optimization suggestions",
+              "Get help with transaction execution",
+            ],
+      timestamp: new Date().toISOString(),
+    });
+  } catch (error) {
+    console.error("Assistant query error:", error);
+    res.status(500).json({ error: "Failed to process query", details: String(error) });
+  }
+});
+
+// List parsed intents (for logging/debugging)
+app.get("/api/assistant/parsed-intents", (_req, res) => {
+  try {
+    const fs = require("fs");
+    const path = require("path");
+    const filePath = path.join(
+      process.cwd(),
+      "server",
+      "data",
+      "parsed_intents.json"
+    );
+    let intents: any[] = [];
+
+    try {
+      const data = fs.readFileSync(filePath, "utf-8");
+      intents = JSON.parse(data);
+    } catch {
+      // File doesn't exist yet
+    }
+
+    res.json({
+      success: true,
+      count: intents.length,
+      recent: intents.slice(-5),
+    });
+  } catch (error) {
+    res.status(500).json({ error: "Failed to fetch parsed intents" });
+  }
+});
