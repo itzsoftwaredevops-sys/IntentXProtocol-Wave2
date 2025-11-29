@@ -1,0 +1,34 @@
+TASK: Wire the IntentX frontend to Wave 3 smart contracts produced in /contracts. Build a production-ready integration layer and UI flows so judges can interact with on-chain actions.
+
+REQUIREMENTS:
+- Project paths:
+  - contracts deployment outputs in /deployment/*.json
+  - frontend code in /client (Vite + React + Tailwind)
+- Create a Web3 service provider `client/src/services/web3.js` (or .ts) that:
+  - Loads RPC from env (including BlockDAG placeholder)
+  - Exposes `getProvider()`, `getSigner()`, `connectWallet()`, `switchNetwork()`
+  - Loads ABIs from /frontend/abi/*.json and returns contract instances: IntentRegistry, MockDEX, Vault.
+- Implement pages/components:
+  - IntentLab.jsx:
+    - NL input + Parse button (calls /api/intent/parse)
+    - Preview card showing parsed intent (tokenIn, tokenOut, amount, minReturn)
+    - Create on-chain Intent button → calls IntentRegistry.createIntent via signer
+    - Execute Intent button (for owners) → calls IntentRegistry.executeIntent
+    - Display TX hash, wait for confirmation, then show event logs
+  - VaultPage.jsx:
+    - Deposit form — approves token, calls Vault.deposit
+    - Withdraw form — calls Vault.withdraw and shows shares balance
+  - Explorer.jsx:
+    - Fetch events via provider.getLogs or read from /deployment or /server logs
+    - Show IntentCreated/IntentExecuted/SwapExecuted events with links to tx (local hash)
+  - WalletConnect component:
+    - Connect/disconnect, show address and network
+    - Display simple ENS-like avatar (or identicon)
+- Error handling + loading states + toast notifications
+- Fallback: if deployed addresses not present, mock contract responses using local JS mocks and show banner: "Running with local mock contracts"
+- Export: ensure frontend writes ABI and contract addresses to `client/src/config.js` on successful deploy detection.
+
+DELIVERABLES:
+- Working UI flows for create intent, execute intent, deposit/withdraw vaults, and explorer logs.
+- Example env template `.env.example` with RPC and PRIVATE_KEY placeholder.
+- Short README snippet in client/README-integration.md describing how to configure provider addresses.
