@@ -78,172 +78,196 @@ contract IntentRegistry is IIntentRegistry, ReentrancyGuard {
         owner = msg.sender;
         intentCounter = 1; // Start from 1 for better readability
     }
-    
-    /**
-     * @notice Register a new user intent
-     * @param naturalLanguage The natural language description of the intent
-     * @param parsedData The parsed data structure (encoded)
-     * @param gasEstimate Estimated gas cost for execution
-     * @return intentId The unique identifier for the intent
-     */
-    function registerIntent(
-        string memory naturalLanguage,
-        bytes memory parsedData,
-        uint256 gasEstimate
-    ) external nonReentrant returns (bytes32) {
-        require(bytes(naturalLanguage).length > 0, "Intent description cannot be empty");
-        require(gasEstimate > 0, "Gas estimate must be greater than zero");
-        require(gasEstimate <= 10000000, "Gas estimate exceeds maximum limit");
-        
-        bytes32 intentId = keccak256(
-            abi.encodePacked(msg.sender, naturalLanguage, block.timestamp, allIntentIds.length)
-        );
-        
-        require(intents[intentId].user == address(0), "Intent already exists");
-        
-        intents[intentId] = Intent({
-            user: msg.sender,
-            intentHash: intentId,
-            naturalLanguage: naturalLanguage,
-            parsedData: parsedData,
-            status: IntentStatus.Parsed,
-            createdAt: block.timestamp,
-            executedAt: 0,
-            gasEstimate: gasEstimate,
-            executionCount: 0,
-            executionHash: bytes32(0)
+
+    // ============================================================================
+    // EXTERNAL FUNCTIONS
+    // ============================================================================
+
+    /// @notice Create a new intent
+    /// @param tokenIn Input token address
+    /// @param tokenOut Output token address
+    /// @param amount Input amount
+    /// @param minReturn Minimum output amount
+    /// @return intentId Unique ID of created intent
+    function createIntent(
+        address tokenIn,
+        address tokenOut,
+        uint256 amount,
+        uint256 minReturn
+    ) external returns (uint256) {
+        require(tokenIn != address(0), "Invalid tokenIn address");
+        require(tokenOut != address(0), "Invalid tokenOut address");
+        require(amount > 0, "Amount must be greater than 0");
+        require(minReturn > 0, "MinReturn must be greater than 0");
+
+        // Transfer tokens from user to contract
+        IERC20(tokenIn).safeTransferFrom(msg.sender, address(this), amount);
+
+        // Create intent
+        uint256 newIntentId = intentCounter++;
+        intents[newIntentId] = Intent({
+            id: newIntentId,
+            owner: msg.sender,
+            tokenIn: tokenIn,
+            tokenOut: tokenOut,
+            amount: amount,
+            minReturn: minReturn,
+            timestamp: block.timestamp,
+            state: IntentState.PENDING
         });
-        
-        userIntents[msg.sender].push(intentId);
-        userIntentCount[msg.sender]++;
-        allIntentIds.push(intentId);
-        
-        emit IntentRegistered(intentId, msg.sender, naturalLanguage, block.timestamp);
-        
-        return intentId;
+
+        // Track user intent
+        userIntents[msg.sender].push(newIntentId);
+
+        // Emit event
+        emit IntentCreated(
+            newIntentId,
+            msg.sender,
+            tokenIn,
+            tokenOut,
+            amount,
+            minReturn
+        );
+
+        return newIntentId;
     }
-    
-    /**
-     * @notice Update the status of an intent
-     * @param intentId The intent identifier
-     * @param newStatus The new status
-     */
-    function updateIntentStatus(bytes32 intentId, IntentStatus newStatus) external onlyExecutor nonReentrant {
-        Intent storage intent = intents[intentId];
-        require(intent.user != address(0), "Intent does not exist");
-        
-        IntentStatus oldStatus = intent.status;
-        intent.status = newStatus;
-        
-        if (newStatus == IntentStatus.Completed || newStatus == IntentStatus.Failed) {
-            intent.executedAt = block.timestamp;
+
+    /// @notice Execute an intent
+    /// @param id Intent ID to execute
+    /// @return outputAmount Output amount from execution
+    function executeIntent(uint256 id)
+        external
+        nonReentrant
+        onlyIntentOwner(id)
+        intentExists(id)
+        returns (uint256)
+    {
+        Intent storage intent = intents[id];
+        uint256 gasStart = gasleft();
+
+        // Call MockDEX for swap
+        uint256 outputAmount = IMockDEX(mockDEX).mockSwap(
+            intent.tokenIn,
+            intent.tokenOut,
+            intent.amount
+        );
+
+        require(
+            outputAmount >= intent.minReturn,
+            "Output amount below minimum"
+        );
+
+        // Update intent state
+        intent.state = IntentState.EXECUTED;
+
+        // Transfer output tokens to user
+        IERC20(intent.tokenOut).safeTransfer(msg.sender, outputAmount);
+
+        // Calculate gas used
+        uint256 gasUsed = gasStart - gasleft();
+
+        // Emit execution event
+        emit IntentExecuted(id, msg.sender, outputAmount, gasUsed);
+
+        return outputAmount;
+    }
+
+    /// @notice Cancel an intent
+    /// @param id Intent ID to cancel
+    function cancelIntent(uint256 id)
+        external
+        onlyIntentOwner(id)
+        intentExists(id)
+    {
+        Intent storage intent = intents[id];
+
+        // Update state
+        intent.state = IntentState.CANCELLED;
+
+        // Refund tokens to user
+        IERC20(intent.tokenIn).safeTransfer(msg.sender, intent.amount);
+
+        // Emit cancellation event
+        emit IntentCancelled(id, msg.sender);
+    }
+
+    // ============================================================================
+    // VIEW FUNCTIONS
+    // ============================================================================
+
+    /// @notice Get intent by ID
+    /// @param id Intent ID
+    /// @return intent The requested intent
+    function getIntent(uint256 id) external view returns (Intent memory) {
+        require(intents[id].owner != address(0), "Intent does not exist");
+        return intents[id];
+    }
+
+    /// @notice Get all intents for a user
+    /// @param user User address
+    /// @return intentsArray Array of user intents
+    function getUserIntents(address user)
+        external
+        view
+        returns (Intent[] memory)
+    {
+        uint256[] memory intentIds = userIntents[user];
+        Intent[] memory intentsArray = new Intent[](intentIds.length);
+
+        for (uint256 i = 0; i < intentIds.length; i++) {
+            intentsArray[i] = intents[intentIds[i]];
         }
-        
-        emit IntentStatusUpdated(intentId, oldStatus, newStatus, block.timestamp);
+
+        return intentsArray;
     }
-    
-    /**
-     * @notice Mark intent as executed
-     * @param intentId The intent identifier
-     * @param gasUsed Gas used for execution
-     */
-    function markIntentExecuted(bytes32 intentId, uint256 gasUsed) external onlyExecutor nonReentrant {
-        Intent storage intent = intents[intentId];
-        require(intent.user != address(0), "Intent does not exist");
-        require(intent.status != IntentStatus.Completed, "Intent already completed");
-        
-        IntentStatus oldStatus = intent.status;
-        intent.status = IntentStatus.Completed;
-        intent.executedAt = block.timestamp;
-        intent.executionCount++;
-        intent.executionHash = keccak256(abi.encodePacked(intentId, gasUsed, block.timestamp));
-        
-        emit IntentExecuted(intentId, msg.sender, gasUsed, block.timestamp);
-        emit IntentStatusUpdated(intentId, oldStatus, IntentStatus.Completed, block.timestamp);
-    }
-    
-    /**
-     * @notice Cancel an intent
-     * @param intentId The intent identifier
-     */
-    function cancelIntent(bytes32 intentId) external nonReentrant {
-        Intent storage intent = intents[intentId];
-        require(intent.user != address(0), "Intent does not exist");
-        require(msg.sender == intent.user, "Only intent creator can cancel");
-        require(intent.status != IntentStatus.Completed, "Cannot cancel completed intent");
-        
-        IntentStatus oldStatus = intent.status;
-        intent.status = IntentStatus.Cancelled;
-        
-        emit IntentStatusUpdated(intentId, oldStatus, IntentStatus.Cancelled, block.timestamp);
-    }
-    
-    /**
-     * @notice Add an authorized executor
-     * @param executor The executor address
-     */
-    function addExecutor(address executor) external onlyOwner {
-        require(executor != address(0), "Invalid executor address");
-        require(!executors[executor], "Address is already an executor");
-        
-        executors[executor] = true;
-        emit ExecutorAdded(executor, block.timestamp);
-    }
-    
-    /**
-     * @notice Remove an authorized executor
-     * @param executor The executor address
-     */
-    function removeExecutor(address executor) external onlyOwner {
-        require(executor != address(0), "Invalid executor address");
-        require(executors[executor], "Address is not an executor");
-        require(executor != owner, "Cannot remove owner as executor");
-        
-        executors[executor] = false;
-        emit ExecutorRemoved(executor, block.timestamp);
-    }
-    
-    /**
-     * @notice Get all intents for a user
-     * @param user The user address
-     * @return Array of intent IDs
-     */
-    function getUserIntents(address user) external view returns (bytes32[] memory) {
-        return userIntents[user];
-    }
-    
-    /**
-     * @notice Get user intent count
-     * @param user The user address
-     * @return The count of intents
-     */
-    function getUserIntentCount(address user) external view returns (uint256) {
-        return userIntentCount[user];
-    }
-    
-    /**
-     * @notice Get total number of intents
-     * @return The count of all intents
-     */
+
+    /// @notice Get total intent count
+    /// @return count Total number of intents
     function getIntentCount() external view returns (uint256) {
-        return allIntentIds.length;
+        return intentCounter - 1;
     }
-    
-    /**
-     * @notice Get intent details
-     * @param intentId The intent identifier
-     * @return The intent struct
-     */
-    function getIntent(bytes32 intentId) external view returns (Intent memory) {
-        return intents[intentId];
+
+    /// @notice Get user intent count
+    /// @param user User address
+    /// @return count Number of user intents
+    function getUserIntentCount(address user)
+        external
+        view
+        returns (uint256)
+    {
+        return userIntents[user].length;
     }
-    
-    /**
-     * @notice Get intent status
-     * @param intentId The intent identifier
-     * @return The current status
-     */
-    function getIntentStatus(bytes32 intentId) external view returns (IntentStatus) {
-        return intents[intentId].status;
+
+    // ============================================================================
+    // ADMIN FUNCTIONS
+    // ============================================================================
+
+    /// @notice Update MockDEX address
+    /// @param newMockDEX New MockDEX address
+    function setMockDEX(address newMockDEX) external onlyOwner {
+        require(newMockDEX != address(0), "Invalid address");
+        mockDEX = newMockDEX;
+    }
+
+    /// @notice Transfer ownership
+    /// @param newOwner New owner address
+    function transferOwnership(address newOwner) external onlyOwner {
+        require(newOwner != address(0), "Invalid address");
+        owner = newOwner;
+    }
+
+    /// @notice Emergency rescue tokens (non-intent tokens)
+    /// @param token Token address to rescue
+    /// @param recipient Recipient address
+    function rescueTokens(address token, address recipient)
+        external
+        onlyOwner
+    {
+        require(token != address(0), "Invalid token address");
+        require(recipient != address(0), "Invalid recipient address");
+        uint256 balance = IERC20(token).balanceOf(address(this));
+        if (balance > 0) {
+            IERC20(token).safeTransfer(recipient, balance);
+        }
     }
 }
