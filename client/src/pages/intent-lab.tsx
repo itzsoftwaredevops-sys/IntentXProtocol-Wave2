@@ -1,19 +1,53 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Send, Sparkles, ArrowRight, CheckCircle2, XCircle, Loader2 } from "lucide-react";
+import { Send, Sparkles, ArrowRight, CheckCircle2, XCircle, Loader2, Link2 } from "lucide-react";
 import type { Intent } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { 
+  connectWallet, 
+  loadContractAddresses, 
+  initializeContracts,
+  createIntentOnChain,
+  executeIntentOnChain,
+  getSigner,
+  getProvider,
+  areContractsDeployed,
+  getMockContractResponse 
+} from "@/services/web3";
 
 export default function IntentLab() {
   const [naturalLanguage, setNaturalLanguage] = useState("");
   const [currentIntent, setCurrentIntent] = useState<Intent | null>(null);
+  const [userAddress, setUserAddress] = useState<string | null>(null);
+  const [txHash, setTxHash] = useState<string | null>(null);
+  const [useBlockchain, setUseBlockchain] = useState(false);
+  const [contractsReady, setContractsReady] = useState(false);
   const { toast } = useToast();
+
+  // Initialize Web3 on component mount
+  useEffect(() => {
+    const initWeb3 = async () => {
+      try {
+        const addresses = await loadContractAddresses();
+        if (addresses.intentRegistry) {
+          const signer = getSigner() || getProvider();
+          if (signer) {
+            initializeContracts(addresses, signer);
+            setContractsReady(true);
+          }
+        }
+      } catch (error) {
+        console.warn('Web3 initialization optional - will use mock contracts', error);
+      }
+    };
+    initWeb3();
+  }, []);
 
   const parseMutation = useMutation({
     mutationFn: async (text: string) => {
@@ -64,6 +98,82 @@ export default function IntentLab() {
   const handleExecute = () => {
     if (currentIntent?.id) {
       executeMutation.mutate(currentIntent.id);
+    }
+  };
+
+  const handleConnectWallet = async () => {
+    try {
+      const addr = await connectWallet();
+      setUserAddress(addr);
+      setUseBlockchain(areContractsDeployed());
+      toast({
+        title: "Wallet Connected",
+        description: `Connected to ${addr.slice(0, 6)}...${addr.slice(-4)}`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Connection Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleCreateOnChain = async () => {
+    if (!userAddress || !currentIntent) return;
+
+    try {
+      // For demo: use mock token addresses
+      const tokenIn = "0x0000000000000000000000000000000000000001";
+      const tokenOut = "0x0000000000000000000000000000000000000002";
+      
+      let hash;
+      if (contractsReady && areContractsDeployed()) {
+        hash = await createIntentOnChain(tokenIn, tokenOut, "1.0", "0.98");
+      } else {
+        // Use mock response
+        const mockResp = getMockContractResponse('createIntent');
+        hash = `0x${Math.random().toString(16).slice(2)}`;
+        toast({ title: "Mock Mode", description: "Using mock contract response" });
+      }
+
+      setTxHash(hash);
+      toast({
+        title: "Intent Created On-Chain",
+        description: `TX: ${hash.slice(0, 10)}...`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "On-Chain Creation Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleExecuteOnChain = async () => {
+    if (!userAddress || !currentIntent?.id) return;
+
+    try {
+      let hash;
+      if (contractsReady && areContractsDeployed()) {
+        hash = await executeIntentOnChain(parseInt(currentIntent.id));
+      } else {
+        hash = `0x${Math.random().toString(16).slice(2)}`;
+        toast({ title: "Mock Mode", description: "Using mock contract response" });
+      }
+
+      setTxHash(hash);
+      toast({
+        title: "Intent Executed On-Chain",
+        description: `TX: ${hash.slice(0, 10)}...`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "On-Chain Execution Failed",
+        description: error.message,
+        variant: "destructive",
+      });
     }
   };
 
@@ -322,3 +432,123 @@ export default function IntentLab() {
     </div>
   );
 }
+
+  return (
+    <div className="p-6 max-w-4xl mx-auto">
+      <div className="mb-6">
+        <h1 className="text-3xl font-bold mb-2">Intent Lab</h1>
+        <p className="text-muted-foreground">Express your DeFi goals in natural language</p>
+        
+        {/* Wallet Connection */}
+        <div className="mt-4">
+          {userAddress ? (
+            <Badge variant="outline" className="bg-green-500/10 text-green-700 dark:text-green-400">
+              ✓ Connected: {userAddress.slice(0, 6)}...{userAddress.slice(-4)}
+            </Badge>
+          ) : (
+            <Button onClick={handleConnectWallet} variant="outline" size="sm">
+              Connect Wallet for On-Chain
+            </Button>
+          )}
+        </div>
+
+        {/* Blockchain Status */}
+        {!areContractsDeployed() && (
+          <div className="mt-4 p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-md text-sm">
+            ⚠️ Running with mock contracts - Smart contracts not detected
+          </div>
+        )}
+      </div>
+
+      {/* NL Input Section */}
+      <Card className="p-6 mb-6">
+        <h2 className="text-lg font-semibold mb-4">Describe Your Intent</h2>
+        <Textarea
+          placeholder="e.g., Swap 10 ETH for USDC with at least 9.8k USDC minimum"
+          value={naturalLanguage}
+          onChange={(e) => setNaturalLanguage(e.target.value)}
+          className="mb-4 min-h-24"
+          data-testid="input-intent-description"
+        />
+        <Button 
+          onClick={handleParse} 
+          disabled={parseMutation.isPending}
+          data-testid="button-parse-intent"
+        >
+          {parseMutation.isPending ? (
+            <>
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              Parsing...
+            </>
+          ) : (
+            <>
+              <Sparkles className="w-4 h-4 mr-2" />
+              Parse Intent
+            </>
+          )}
+        </Button>
+      </Card>
+
+      {/* Preview & Actions */}
+      {currentIntent && (
+        <Card className="p-6 mb-6 border-blue-500/30 bg-blue-500/5">
+          <h2 className="text-lg font-semibold mb-4">Parsed Intent Preview</h2>
+          
+          <div className="grid grid-cols-2 gap-4 mb-6">
+            <div>
+              <p className="text-sm text-muted-foreground">Action</p>
+              <p className="font-semibold">{currentIntent.action || 'Swap'}</p>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Status</p>
+              <Badge variant={currentIntent.status === 'completed' ? 'default' : 'secondary'}>
+                {currentIntent.status}
+              </Badge>
+            </div>
+          </div>
+
+          {/* Execution Options */}
+          <div className="space-y-3">
+            <div className="flex gap-2">
+              <Button 
+                onClick={handleExecute} 
+                disabled={executeMutation.isPending}
+                className="flex-1"
+                data-testid="button-execute-backend"
+              >
+                {executeMutation.isPending ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Executing...
+                  </>
+                ) : (
+                  <>
+                    <Send className="w-4 h-4 mr-2" />
+                    Execute (Backend)
+                  </>
+                )}
+              </Button>
+
+              {userAddress && (
+                <Button 
+                  onClick={handleExecuteOnChain}
+                  variant="outline"
+                  className="flex-1"
+                  data-testid="button-execute-blockchain"
+                >
+                  <Link2 className="w-4 h-4 mr-2" />
+                  Execute (On-Chain)
+                </Button>
+              )}
+            </div>
+
+            {txHash && (
+              <div className="p-3 bg-green-500/10 border border-green-500/20 rounded-md text-sm">
+                ✓ Transaction: {txHash.slice(0, 16)}...
+              </div>
+            )}
+          </div>
+        </Card>
+      )}
+    </div>
+  );
