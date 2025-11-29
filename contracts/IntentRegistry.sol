@@ -1,61 +1,82 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.24;
+pragma solidity ^0.8.21;
 
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "./interfaces/IIntentRegistry.sol";
+import "./interfaces/IMockDEX.sol";
 
 /**
  * @title IntentRegistry
- * @notice Core registry for user intents in the IntentX protocol
- * @dev Stores intent metadata, tracks status, and enables intent discovery
- * @custom:security Features reentrancy protection and comprehensive event logging
+ * @notice Wave 3 Intent Registry - Manages intent creation, execution, and lifecycle
+ * @dev Production-grade intent registry for BlockDAG with full security features
  */
-contract IntentRegistry is ReentrancyGuard {
-    enum IntentStatus { Pending, Parsed, Executing, Completed, Failed, Cancelled }
-    
-    struct Intent {
-        address user;
-        bytes32 intentHash;
-        string naturalLanguage;
-        bytes parsedData;
-        IntentStatus status;
-        uint256 createdAt;
-        uint256 executedAt;
-        uint256 gasEstimate;
-        uint256 executionCount;
-        bytes32 executionHash;
-    }
-    
-    // Intent storage
-    mapping(bytes32 => Intent) public intents;
-    mapping(address => bytes32[]) public userIntents;
-    mapping(address => uint256) public userIntentCount;
-    bytes32[] public allIntentIds;
-    
-    // Access control
+contract IntentRegistry is IIntentRegistry, ReentrancyGuard {
+    using SafeERC20 for IERC20;
+
+    // ============================================================================
+    // STATE VARIABLES
+    // ============================================================================
+
+    /// @notice Mapping of intent ID to intent details
+    mapping(uint256 => Intent) private intents;
+
+    /// @notice Mapping of user address to their intent IDs
+    mapping(address => uint256[]) private userIntents;
+
+    /// @notice Counter for intent IDs
+    uint256 private intentCounter;
+
+    /// @notice MockDEX contract address for swaps
+    address public mockDEX;
+
+    /// @notice Contract owner
     address public owner;
-    mapping(address => bool) public executors;
-    
-    // Events
-    event IntentRegistered(bytes32 indexed intentId, address indexed user, string naturalLanguage, uint256 timestamp);
-    event IntentStatusUpdated(bytes32 indexed intentId, IntentStatus oldStatus, IntentStatus newStatus, uint256 timestamp);
-    event IntentExecuted(bytes32 indexed intentId, address indexed executor, uint256 gasUsed, uint256 timestamp);
-    event ExecutorAdded(address indexed executor, uint256 timestamp);
-    event ExecutorRemoved(address indexed executor, uint256 timestamp);
-    
+
+    // ============================================================================
+    // MODIFIERS
+    // ============================================================================
+
+    /// @notice Only owner modifier
     modifier onlyOwner() {
         require(msg.sender == owner, "Only owner can call this function");
         _;
     }
-    
-    modifier onlyExecutor() {
-        require(executors[msg.sender] || msg.sender == owner, "Only authorized executors can call this");
+
+    /// @notice Only intent owner modifier
+    modifier onlyIntentOwner(uint256 intentId) {
+        require(
+            intents[intentId].owner == msg.sender,
+            "Only intent owner can call this function"
+        );
         _;
     }
-    
-    constructor() {
+
+    /// @notice Intent must exist and be pending
+    modifier intentExists(uint256 intentId) {
+        require(
+            intents[intentId].owner != address(0),
+            "Intent does not exist"
+        );
+        require(
+            intents[intentId].state == IntentState.PENDING,
+            "Intent is not pending"
+        );
+        _;
+    }
+
+    // ============================================================================
+    // CONSTRUCTOR
+    // ============================================================================
+
+    /// @notice Initialize IntentRegistry
+    /// @param _mockDEX Address of MockDEX contract
+    constructor(address _mockDEX) {
+        require(_mockDEX != address(0), "Invalid MockDEX address");
+        mockDEX = _mockDEX;
         owner = msg.sender;
-        executors[msg.sender] = true;
+        intentCounter = 1; // Start from 1 for better readability
     }
     
     /**
