@@ -1,7 +1,32 @@
 import { ethers } from 'ethers';
-import IntentRegistryABI from '../../abi/IntentRegistry.json';
-import MockDEXABI from '../../abi/MockDEX.json';
-import VaultABI from '../../abi/Vault.json';
+
+// Minimal ABIs for contract interaction
+const IntentRegistryABI = [
+  "function createIntent(address tokenIn, address tokenOut, uint256 amount, uint256 minReturn) public returns (uint256)",
+  "function executeIntent(uint256 intentId) public returns (uint256)",
+  "function cancelIntent(uint256 intentId) public",
+  "function getIntent(uint256 intentId) public view returns (tuple(uint256 id, address owner, address tokenIn, address tokenOut, uint256 amount, uint256 minReturn, uint256 status))",
+  "function getUserIntents(address user) public view returns (uint256[])",
+  "event IntentCreated(uint256 indexed intentId, address indexed owner, address tokenIn, address tokenOut, uint256 amount, uint256 minReturn)",
+  "event IntentExecuted(uint256 indexed intentId, address indexed owner, uint256 outputAmount, uint256 gasUsed)",
+];
+
+const MockDEXABI = [
+  "function swap(address tokenIn, address tokenOut, uint256 amountIn) public returns (uint256)",
+  "function getSwapAmount(address tokenIn, address tokenOut, uint256 amountIn) public view returns (uint256)",
+  "function addLiquidity(address tokenA, address tokenB, uint256 amountA, uint256 amountB) public",
+  "event Swapped(address indexed tokenIn, address indexed tokenOut, uint256 amountIn, uint256 amountOut)",
+];
+
+const VaultABI = [
+  "function deposit(uint256 amount) public returns (uint256 shares)",
+  "function withdraw(uint256 shares) public returns (uint256 amount)",
+  "function totalAssets() public view returns (uint256)",
+  "function balanceOf(address user) public view returns (uint256)",
+  "function getAPY() public view returns (uint256)",
+  "event Deposited(address indexed user, uint256 amount, uint256 shares)",
+  "event Withdrawn(address indexed user, uint256 shares, uint256 amount)",
+];
 
 // Types
 export interface ContractAddresses {
