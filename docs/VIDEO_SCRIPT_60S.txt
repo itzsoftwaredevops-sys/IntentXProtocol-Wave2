@@ -1,0 +1,29 @@
+========================================
+INTENTX WAVE 3: 60-SECOND PITCH SCRIPT
+========================================
+
+[TIMING: 0-5 SECONDS - INTRODUCTION]
+"Hi, I'm presenting IntentX, a production-ready intent-based DeFi aggregator for the BlockDAG Buildathon.
+
+[TIMING: 5-15 SECONDS - PROBLEM]
+Today's DeFi requires users to navigate complex protocols separately: swap on Uniswap, deposit on Aave, stake on Lido—it's fragmented and intimidating. Users need a simpler way to express their financial goals.
+
+[TIMING: 15-30 SECONDS - SOLUTION]
+IntentX solves this with natural language processing. You just describe what you want: 'Swap 100 USDC for ETH and stake it in Lido'—and our AI parser converts it into optimized, executable blockchain transactions. Multi-chain support across BlockDAG, Ethereum, and Polygon.
+
+[TIMING: 30-50 SECONDS - DEMO WALKTHROUGH]
+Let me show you the Intent Lab. I'll type a natural language intent, click Parse, and we see the execution preview with estimated gas costs and multi-step breakdown. Then we execute—sub-2-second perceived execution via optimistic UI updates. The transaction completes on-chain with full transparency.
+
+[TIMING: 50-60 SECONDS - CLOSING & ASK]
+We've built production-grade smart contracts with full security hardening, a comprehensive API with 50+ endpoints, and an automated test suite so judges can validate everything locally. IntentX makes DeFi accessible to everyone. Thank you."
+
+========================================
+NOTES FOR RECORDING
+========================================
+
+TONE: Confident, conversational, energetic
+PACE: Natural speech rate (slightly slower for clarity)
+PAUSES: 1-2 second pause after "Solution" and after "Demo walkthrough" for emphasis
+
+TELEPROMPTER TIP: Read naturally, don't rush. Make eye contact with camera during intro.
+CAMERA: Position at eye level, good lighting. Show screen during demo walkthrough (30-50s).
