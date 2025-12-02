@@ -318,7 +318,7 @@ export default function IntentLab() {
 
                 {/* Steps */}
                 <div className="space-y-3">
-                  {currentIntent.parsedSteps.map((step, idx) => (
+                  {currentIntent.parsedSteps?.map((step, idx) => (
                     <div key={idx} className="flex items-start gap-3" data-testid={`intent-step-${idx}`}>
                       <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
                         <span className="text-sm font-bold text-primary">{idx + 1}</span>

@@ -433,19 +433,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/intent/parse", async (req, res) => {
     try {
-      const { intent } = req.body;
-      if (!intent || typeof intent !== "string") {
-        return res.status(400).json({ error: "Missing or invalid intent" });
+      const { naturalLanguage } = req.body;
+      if (!naturalLanguage || typeof naturalLanguage !== "string") {
+        return res.status(400).json({ error: "Missing or invalid naturalLanguage" });
       }
 
-      const sanitized = intent.slice(0, 500).trim();
+      const sanitized = naturalLanguage.slice(0, 500).trim();
       const parsed = await parseIntent(sanitized);
 
-      res.json({
-        success: true,
-        parsed,
-        message: `Intent parsed: ${parsed.action} - ${parsed.explanation}`,
-      });
+      const intent = {
+        id: `intent-${Date.now()}`,
+        naturalLanguage: sanitized,
+        status: "parsed" as const,
+        parsedSteps: [
+          {
+            action: parsed.action === "swap" ? "swap" : parsed.action === "stake" ? "stake" : "supply" as any,
+            protocol: parsed.protocol || "Uniswap",
+            tokenIn: parsed.tokenIn || "ETH",
+            tokenOut: parsed.tokenOut || "USDC",
+            amount: parsed.amount || "1.0",
+            estimatedGas: "0.01",
+          }
+        ],
+        totalGasEstimate: "0.01",
+        createdAt: new Date().toISOString(),
+        owner: "",
+      };
+
+      res.json(intent);
     } catch (error) {
       console.error("Parse error:", error);
       res.status(500).json({ 
